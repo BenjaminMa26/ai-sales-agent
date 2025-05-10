@@ -16,7 +16,13 @@ def load_data():
     demo['base_sales'] = np.random.randint(500, 1000, size=30)
     demo['discount_rate'] = np.random.uniform(0, 0.3, size=30)
     demo['price'] = demo['price'] * (1 - demo['discount_rate'])
-    demo['actual_sales'] = demo['base_sales'] + np.random.randint(50, 300, size=30) - demo['price'] * 0.2
+    demo['actual_sales'] = (
+    demo['base_sales']
+    + 300 * demo['discount_rate']                     # 强化折扣对销量的正向作用
+    + demo['CCE'] * 100                               # 主播影响力提升
+    + np.random.normal(0, 30, size=30)                # 添加市场波动噪声
+    - demo['price'] * 0.05                            # 高价格抑制效果较弱
+)
     demo['sales_boost_rate'] = (demo['actual_sales'] - demo['base_sales']) / demo['base_sales']
     cce = demo.groupby('streamer_id')['sales_boost_rate'].mean().reset_index()
     cce.columns = ['streamer_id', 'CCE']
