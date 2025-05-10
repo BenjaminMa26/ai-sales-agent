@@ -20,6 +20,8 @@ def load_data():
     300 * demo['discount_rate']
     + np.random.normal(0, 30, size=30)
     - demo['price'] * 0.05
+)
+    - demo['price'] * 0.05
 ) -
     demo['price'] * 0.05
 ) -
