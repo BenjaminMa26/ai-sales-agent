@@ -30,6 +30,13 @@ def train_model(data):
     model.fit(X, y)
     return model
 
+# 市场份额函数（logit based）
+def calculate_share(p1, p2, alpha=0.01):
+    exp1 = np.exp(-alpha * p1)
+    exp2 = np.exp(-alpha * p2)
+    total = exp1 + exp2
+    return exp1 / total, exp2 / total
+
 # Streamlit UI
 st.title("AI Agent for Smartphone Sales Forecast with Influencer Impact")
 
@@ -51,12 +58,13 @@ pred_sales = model.predict(X_new)[0]
 st.subheader("📈 Predicted Sales")
 st.metric(label="Expected 6-month Sales", value=f"{int(pred_sales)} units")
 
-# 月度预测图表
-st.subheader("📊 Monthly Sales Forecast")
+# 市场敏感月度预测图表
+st.subheader("📊 Monthly Sales Forecast (Market-sensitive)")
+monthly_weights = [1.3, 1.1, 0.9, 1.2, 0.8, 0.7]  # 更贴近现实的非线性波动
+monthly_sales = (pred_sales * np.array(monthly_weights)).astype(int)
 months = [f"Month {i+1}" for i in range(6)]
-monthly_sales = np.linspace(pred_sales * 0.8, pred_sales * 1.1, 6).astype(int)  # 模拟波动趋势
 monthly_df = pd.DataFrame({"Month": months, "Sales": monthly_sales})
-line_fig = px.line(monthly_df, x="Month", y="Sales", markers=True, title="Semi-Annual Forecast Curve")
+line_fig = px.line(monthly_df, x="Month", y="Sales", markers=True, title="Market-aware Forecast Curve")
 st.plotly_chart(line_fig)
 
 # 品牌+主播比较柱状图
@@ -71,6 +79,47 @@ for b in data['brand'].unique():
 report_df = pd.DataFrame(predictions)
 fig = px.bar(report_df, x='Influencer', y='Predicted Sales', color='Brand', barmode='group', title="Sales Forecast by Brand & Influencer")
 st.plotly_chart(fig)
+
+# 利润模拟器：基于价格决定市场份额与利润
+st.subheader("📊 Dual Product Profit Simulator")
+price1 = st.number_input("Phone S1 Price", value=799)
+price2 = st.number_input("Phone S2 Price", value=899)
+mc1 = st.number_input("S1 Marginal Cost", value=440)
+mc2 = st.number_input("S2 Marginal Cost", value=470)
+share1, share2 = calculate_share(price1, price2)
+M = 10000  # 市场容量
+q1 = share1 * M
+q2 = share2 * M
+rev1 = q1 * price1
+rev2 = q2 * price2
+cost1 = mc1 * q1
+cost2 = mc2 * q2
+profit1 = rev1 - cost1
+profit2 = rev2 - cost2
+total_profit = profit1 + profit2
+
+profit_df = pd.DataFrame({
+    "Phone": ["S1", "S2"],
+    "Price": [price1, price2],
+    "Market Share": [share1, share2],
+    "Quantity": [q1, q2],
+    "Revenue": [rev1, rev2],
+    "Cost": [cost1, cost2],
+    "Profit": [profit1, profit2]
+})
+
+st.dataframe(profit_df.style.format("{:.2f}"))
+st.write(f"**Total Estimated Profit:** ${total_profit:.2f}")
+
+# 提示最佳策略（基于利润差异）
+if profit1 > profit2:
+    suggestion = "📌 Consider increasing focus on S1 — higher price-performance profit observed."
+elif profit2 > profit1:
+    suggestion = "📌 S2 pricing strategy currently yields more profit — optimize cost or promote aggressively."
+else:
+    suggestion = "⚖️ Both products yield equal profit — fine-tune market strategy."
+
+st.info(suggestion)
 
 st.subheader("📌 Celebrity Coefficient Table")
 st.dataframe(data[['streamer_id', 'CCE']].drop_duplicates().reset_index(drop=True))
