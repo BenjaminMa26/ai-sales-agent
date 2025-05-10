@@ -17,8 +17,12 @@ def load_data():
     demo['discount_rate'] = np.random.uniform(0, 0.3, size=30)
     demo['price'] = demo['price'] * (1 - demo['discount_rate'])
     demo['sales_boost_proxy'] = (
-    300 * demo['discount_rate'] +
-    np.random.normal(0, 30, size=30) -
+    300 * demo['discount_rate']
+    + np.random.normal(0, 30, size=30)
+    - demo['price'] * 0.05
+) -
+    demo['price'] * 0.05
+) -
     demo['price'] * 0.05
 )
     - demo['price'] * 0.05
@@ -28,10 +32,7 @@ cce = demo.groupby('streamer_id')['sales_boost_rate'].mean().reset_index()
 cce.columns = ['streamer_id', 'CCE']
 demo = demo.merge(cce, on='streamer_id')
 demo['actual_sales'] = demo['base_sales'] + demo['sales_boost_proxy'] + demo['CCE'] * 100
-    demo['sales_boost_rate'] = (demo['actual_sales'] - demo['base_sales']) / demo['base_sales']
-    cce = demo.groupby('streamer_id')['sales_boost_rate'].mean().reset_index()
-    cce.columns = ['streamer_id', 'CCE']
-    return demo.merge(cce, on='streamer_id')
+return demo
 
 # 模型培训
 def train_model(data):
