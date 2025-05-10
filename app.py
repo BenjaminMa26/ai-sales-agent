@@ -59,12 +59,23 @@ st.subheader("📈 Predicted Sales")
 st.metric(label="Expected 6-month Sales", value=f"{int(pred_sales)} units")
 
 # 市场敏感月度预测图表
-st.subheader("📊 Monthly Sales Forecast (Market-sensitive)")
-monthly_weights = [1.3, 1.1, 0.9, 1.2, 0.8, 0.7]  # 更贴近现实的非线性波动
+st.subheader("📊 Seasonal E-commerce Sales Forecast (Peak Season View)")
+holiday_boost = [1.6, 1.4, 1.1, 1.2, 0.8, 0.7] if 9 <= pd.Timestamp.today().month or pd.Timestamp.today().month <= 3 else [1.5, 1.2, 0.9, 1.3, 1.0 + discount * 1.5, 1.0 + discount * 2.0]
+monthly_weights = holiday_boost  # 更贴近现实的非线性波动
 monthly_sales = (pred_sales * np.array(monthly_weights)).astype(int)
 months = [f"Month {i+1}" for i in range(6)]
 monthly_df = pd.DataFrame({"Month": months, "Sales": monthly_sales})
-line_fig = px.line(monthly_df, x="Month", y="Sales", markers=True, title="Market-aware Forecast Curve")
+# Add realistic North American holidays for Sep–Mar season
+holiday_labels = [
+    "📚 Back to School",  # Month 1
+    "🍂 Thanksgiving",     # Month 2
+    "🛍️ Black Friday",     # Month 3
+    "🎄 Christmas",        # Month 4
+    "🎉 New Year",         # Month 5
+    "🏈 Super Bowl"        # Month 6
+] if 9 <= pd.Timestamp.today().month or pd.Timestamp.today().month <= 3 else ["" for _ in range(6)]
+monthly_df["Holiday"] = holiday_labels
+line_fig = px.line(monthly_df, x="Month", y="Sales", text="Holiday", markers=True, title="📆 Seasonal Sales Curve with North American Holidays")
 st.plotly_chart(line_fig)
 
 # 品牌+主播比较柱状图
@@ -108,7 +119,7 @@ profit_df = pd.DataFrame({
     "Profit": [profit1, profit2]
 })
 
-st.dataframe(profit_df.style.format("{:.2f}"))
+st.dataframe(profit_df.round(2))
 st.write(f"**Total Estimated Profit:** ${total_profit:.2f}")
 
 # 提示最佳策略（基于利润差异）
