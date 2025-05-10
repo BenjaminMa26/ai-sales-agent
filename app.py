@@ -14,7 +14,9 @@ def load_data():
     demo['streamer_id'] = np.random.choice(streamers, size=30)
     demo['brand'] = np.random.choice(brands, size=30)
     demo['base_sales'] = np.random.randint(500, 1000, size=30)
-    demo['actual_sales'] = demo['base_sales'] + np.random.randint(50, 300, size=30)
+    demo['discount_rate'] = np.random.uniform(0, 0.3, size=30)
+    demo['price'] = demo['price'] * (1 - demo['discount_rate'])
+    demo['actual_sales'] = demo['base_sales'] + np.random.randint(50, 300, size=30) - demo['price'] * 0.2
     demo['sales_boost_rate'] = (demo['actual_sales'] - demo['base_sales']) / demo['base_sales']
     cce = demo.groupby('streamer_id')['sales_boost_rate'].mean().reset_index()
     cce.columns = ['streamer_id', 'CCE']
@@ -22,9 +24,9 @@ def load_data():
 
 # 模型培训
 def train_model(data):
-    X = data[['price', 'CCE']]
+    X = data[['price', 'CCE', 'discount_rate']]
     y = data['actual_sales']
-    model = GradientBoostingRegressor()
+    model = GradientBoostingRegressor(n_estimators=200, max_depth=5, learning_rate=0.05)
     model.fit(X, y)
     return model
 
@@ -36,28 +38,38 @@ model = train_model(data)
 
 st.sidebar.header("Input Product Parameters")
 price = st.sidebar.number_input("Price ($)", min_value=100.0, max_value=3000.0, value=999.0, step=1.0)
+discount = st.sidebar.slider("Discount Rate (%)", min_value=0, max_value=50, value=10) / 100
 brand = st.sidebar.selectbox("Select Phone Brand", data['brand'].unique())
 streamer = st.sidebar.selectbox("Choose Influencer", data['streamer_id'].unique())
 
 cce_value = data[data['streamer_id'] == streamer]['CCE'].iloc[0]
+adjusted_price = price * (1 - discount)
 
-X_new = pd.DataFrame([[price, cce_value]], columns=['price', 'CCE'])
+X_new = pd.DataFrame([[adjusted_price, cce_value, discount]], columns=['price', 'CCE', 'discount_rate'])
 pred_sales = model.predict(X_new)[0]
 
 st.subheader("📈 Predicted Sales")
 st.metric(label="Expected 6-month Sales", value=f"{int(pred_sales)} units")
 
-# 生成可视化报告
+# 月度预测图表
+st.subheader("📊 Monthly Sales Forecast")
+months = [f"Month {i+1}" for i in range(6)]
+monthly_sales = np.linspace(pred_sales * 0.8, pred_sales * 1.1, 6).astype(int)  # 模拟波动趋势
+monthly_df = pd.DataFrame({"Month": months, "Sales": monthly_sales})
+line_fig = px.line(monthly_df, x="Month", y="Sales", markers=True, title="Semi-Annual Forecast Curve")
+st.plotly_chart(line_fig)
+
+# 品牌+主播比较柱状图
 st.subheader("🔍 Brand & Influencer Comparison")
 predictions = []
 for b in data['brand'].unique():
     for s in data['streamer_id'].unique():
         cce_val = data[data['streamer_id'] == s]['CCE'].iloc[0]
-        pred = model.predict(pd.DataFrame([[price, cce_val]], columns=['price', 'CCE']))[0]
+        pred = model.predict(pd.DataFrame([[adjusted_price, cce_val, discount]], columns=['price', 'CCE', 'discount_rate']))[0]
         predictions.append({'Brand': b, 'Influencer': s, 'Predicted Sales': pred})
 
 report_df = pd.DataFrame(predictions)
-fig = px.bar(report_df, x='Influencer', y='Predicted Sales', color='Brand', barmode='group')
+fig = px.bar(report_df, x='Influencer', y='Predicted Sales', color='Brand', barmode='group', title="Sales Forecast by Brand & Influencer")
 st.plotly_chart(fig)
 
 st.subheader("📌 Celebrity Coefficient Table")
