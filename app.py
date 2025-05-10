@@ -56,10 +56,17 @@ X_new = pd.DataFrame([[adjusted_price, cce_value, discount]], columns=['price', 
 pred_sales = model.predict(X_new)[0]
 
 st.subheader("📈 Predicted Sales")
+st.caption("
+This section uses a Gradient Boosting Regressor trained on historical smartphone sales and influencer performance. 
+Features include price, discount rate, and the Celebrity Coefficient (CCE), which simulates influencer impact. 
+The output reflects a 6-month sales forecast under given conditions.")
 st.metric(label="Expected 6-month Sales", value=f"{int(pred_sales)} units")
 
 # 市场敏感月度预测图表
 st.subheader("📊 Seasonal E-commerce Sales Forecast (Peak Season View)")
+st.caption("
+This chart reflects expected monthly sales trends, adjusted for North American holiday patterns (Sep–Mar). 
+It combines predefined seasonal multipliers with discount-sensitive late-stage boosts to simulate realistic market curves.")
 holiday_boost = [1.6, 1.4, 1.1, 1.2, 0.8, 0.7] if 9 <= pd.Timestamp.today().month or pd.Timestamp.today().month <= 3 else [1.5, 1.2, 0.9, 1.3, 1.0 + discount * 1.5, 1.0 + discount * 2.0]
 monthly_weights = holiday_boost  # 更贴近现实的非线性波动
 monthly_sales = (pred_sales * np.array(monthly_weights)).astype(int)
@@ -80,6 +87,9 @@ st.plotly_chart(line_fig)
 
 # 品牌+主播比较柱状图
 st.subheader("🔍 Brand & Influencer Comparison")
+st.caption("
+This bar chart compares predicted sales under different brand and influencer pairings. 
+Each influencer is evaluated using their CCE (Celebrity Coefficient), which is derived from historical uplift rates.")
 predictions = []
 for b in data['brand'].unique():
     for s in data['streamer_id'].unique():
@@ -93,6 +103,9 @@ st.plotly_chart(fig)
 
 # 利润模拟器：基于价格决定市场份额与利润
 st.subheader("📊 Dual Product Profit Simulator")
+st.caption("
+This module estimates optimal profit using a logit-based share model, where prices determine expected market share. 
+It calculates revenue, cost, and profit based on price and marginal cost inputs, and provides a strategic suggestion.")
 price1 = st.number_input("Phone S1 Price", value=799)
 price2 = st.number_input("Phone S2 Price", value=899)
 mc1 = st.number_input("S1 Marginal Cost", value=440)
@@ -133,4 +146,7 @@ else:
 st.info(suggestion)
 
 st.subheader("📌 Celebrity Coefficient Table")
+st.caption("
+This table lists each influencer's average impact on historical sales. 
+The CCE score is used as an input feature for forecasting sales uplift.")
 st.dataframe(data[['streamer_id', 'CCE']].drop_duplicates().reset_index(drop=True))
